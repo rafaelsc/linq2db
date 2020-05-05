@@ -10,10 +10,10 @@ namespace Tests.UserTests
 	[TestFixture]
 	public class Issue352Tests : TestBase
 	{
-		[Test, NorthwindDataContext]
-		public void Test(string context)
+		[Test]
+		public void Test([NorthwindDataContext] string context)
 		{
-			using (var db = new NorthwindDB())
+			using (var db = new NorthwindDB(context))
 			{
 				var zz =
 					from e in db.Employee

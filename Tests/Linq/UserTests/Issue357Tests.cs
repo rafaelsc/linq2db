@@ -11,13 +11,13 @@ namespace Tests.UserTests
 	[TestFixture]
 	public class Issue357Tests : TestBase
 	{
-		[Table(Database="TestData", Name="AllTypes2")]
+		[Table(Name="AllTypes2")]
 		class AllTypes2
 		{
 			[Column(DbType="int"), PrimaryKey, Identity]
 			public int ID { get; set; }
 
-			DateTimeOffset? _dateTime;
+			private DateTimeOffset? _dateTime;
 
 			[Column("datetimeoffsetDataType", DbType="datetimeoffset(7)", Storage = "_dateTime"), Nullable]
 			public DateTime? DateTime
@@ -29,12 +29,14 @@ namespace Tests.UserTests
 			}
 		}
 
-		[Test, IncludeDataContextSource(ProviderName.SqlServer2012)]
-		public void Test(string context)
+		[Test]
+		public void Test([IncludeDataSources(TestProvName.AllSqlServer2008Plus)] string context)
 		{
 			using (var db = GetDataContext(context))
 			{
 				var dt = db.GetTable<AllTypes2>().First(t => t.ID == 2);
+				Assert.IsNotNull(dt);
+				Assert.IsNotNull(dt.DateTime);
 			}
 		}
 	}

@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
+using System.Collections.Immutable;
 
 using LinqToDB;
-using LinqToDB.Common;
 using LinqToDB.Expressions;
 using LinqToDB.Mapping;
 
@@ -24,13 +25,13 @@ namespace Tests.Model
 		public int? Value1;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID")]
-		public List<Child> Children;
+		public List<Child> Children = null!;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID")]
-		public List<GrandChild> GrandChildren;
+		public List<GrandChild> GrandChildren = null!;
 
 		[Association(ThisKey = "ParentID, Value1", OtherKey = "ParentID, Value1")]
-		public Parent ParentTest;
+		public Parent? ParentTest;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID")]
 		public IEnumerable<Child> Children2
@@ -39,7 +40,7 @@ namespace Tests.Model
 		}
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID")]
-		public ImmutableList<Child> Children3;
+		public ImmutableList<Child> Children3 = null!;
 
 		public override bool Equals(object obj)
 		{
@@ -65,7 +66,45 @@ namespace Tests.Model
 		}
 
 		[Association(ThisKey = "ParentID", OtherKey = "ID")]
-		public LinqDataTypes Types;
+		public LinqDataTypes? Types;
+
+		[Association(ThisKey = "ParentID", OtherKey = "ParentID", ExpressionPredicate = "ChildrenPredicate", CanBeNull = true)]
+		public List<Child> ChildrenX { get; set; } = null!;
+
+		static Expression<Func<Parent, Child, bool>> ChildrenPredicate =>
+			(t, m) => Math.Abs(m.ChildID) > 3;
+
+		[Association(ThisKey = "ParentID", OtherKey = "ParentID", ExpressionPredicate = "GrandChildrenPredicate", CanBeNull = true)]
+		public List<GrandChild> GrandChildrenX { get; set; } = null!;
+
+		static Expression<Func<Parent,GrandChild, bool>> GrandChildrenPredicate =>
+			(t, m) => m.ChildID > 22;
+
+		[ExpressionMethod("GrandChildren2Impl")]
+		public IEnumerable<GrandChild> GrandChildren2 { get; set; } = null!;
+
+		static Expression<Func<Parent,ITestDataContext,IEnumerable<GrandChild>>> GrandChildren2Impl()
+		{
+			return (p,db) =>
+//				from gc in db.GrandChild
+//				where p.ParentID == gc.ParentID
+//				select gc;
+				p.Children.SelectMany(c => c.GrandChildren);
+		}
+
+		[ExpressionMethod("GrandChildrenByIDImpl")]
+		public IEnumerable<GrandChild> GrandChildrenByID(int id)
+		{
+			throw new NotImplementedException();
+		}
+
+		static Expression<Func<Parent,int,ITestDataContext,IEnumerable<GrandChild>>> GrandChildrenByIDImpl()
+		{
+			return (p,id,db) =>
+				from gc in db.GrandChild
+				where p.ParentID == gc.ParentID && gc.ChildID == id
+				select gc;
+		}
 	}
 
 	public class Child
@@ -74,29 +113,29 @@ namespace Tests.Model
 		[PrimaryKey] public int ChildID;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID")]
-		public Parent  Parent;
+		public Parent?  Parent;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID", CanBeNull = false)]
-		public Parent1 Parent1;
+		public Parent1? Parent1;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID2", CanBeNull = false)]
-		public Parent3 ParentID2;
+		public Parent3? ParentID2;
 
 		[Association(ThisKey = "ParentID, ChildID", OtherKey = "ParentID, ChildID")]
-		public List<GrandChild> GrandChildren;
+		public List<GrandChild> GrandChildren = null!;
 
 		[Association(ThisKey = "ParentID, ChildID", OtherKey = "ParentID, ChildID", CanBeNull = false)]
-		public List<GrandChild> GrandChildren1;
+		public List<GrandChild> GrandChildren1 = null!;
 
 		[Association(ThisKey = "ParentID, ChildID", OtherKey = "ParentID, ChildID")]
-		public GrandChild[] GrandChildren2;
+		public GrandChild[] GrandChildren2 = null!;
 
 		public override bool Equals(object obj)
 		{
 			return Equals(obj as Child);
 		}
 
-		public bool Equals(Child other)
+		public bool Equals(Child? other)
 		{
 			if (ReferenceEquals(null, other)) return false;
 			if (ReferenceEquals(this, other)) return true;
@@ -114,7 +153,7 @@ namespace Tests.Model
 	{
 		public GrandChild()
 		{
-			
+
 		}
 
 		public int? ParentID;
@@ -122,7 +161,7 @@ namespace Tests.Model
 		public int? GrandChildID;
 
 		[Association(ThisKey = "ParentID, ChildID", OtherKey = "ParentID, ChildID")]
-		public Child Child;
+		public Child? Child;
 
 		public override bool Equals(object obj)
 		{
@@ -197,7 +236,7 @@ namespace Tests.Model
 			{
 				if ((int)value == 1)
 				{
-					
+
 				}
 
 				_Value1 = value;
@@ -229,7 +268,7 @@ namespace Tests.Model
 
 		public override string ToString()
 		{
-			return "ParentID: {0}, Value1: {1}".Args(ParentID, Value1);
+			return $"ParentID: {ParentID}, Value1: {Value1}";
 		}
 	}
 
@@ -240,7 +279,7 @@ namespace Tests.Model
 		public int? Value1;
 
 		[Association(ThisKey = "ParentID", OtherKey = "Value1", CanBeNull = true)]
-		public List<Parent5> Children;
+		public List<Parent5> Children = null!;
 
 		public override bool Equals(object obj)
 		{
@@ -257,7 +296,7 @@ namespace Tests.Model
 
 		public override int GetHashCode()
 		{
-			unchecked { return (ParentID * 397) ^ (int)Value1; }
+			unchecked { return (ParentID * 397) ^ (int)Value1!; }
 		}
 
 		public int CompareTo(object obj)
@@ -277,7 +316,7 @@ namespace Tests.Model
 		[Column]     public int? Value1;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID")]
-		public List<Child> Children;
+		public List<Child> Children = null!;
 
 		public override bool Equals(object obj)
 		{
@@ -311,10 +350,10 @@ namespace Tests.Model
 		public int? GrandChildID;
 
 		[Association(ThisKey = "ParentID, ChildID", OtherKey = "ParentID, ChildID")]
-		public Child Child;
+		public Child? Child;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID", CanBeNull = false)]
-		public Parent1 Parent;
+		public Parent1? Parent;
 
 		public override bool Equals(object obj)
 		{
@@ -361,7 +400,7 @@ namespace Tests.Model
 		public int ParentID;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID")]
-		public List<Child> Children;
+		public List<Child> Children = null!;
 
 		public override bool Equals(object obj)
 		{
@@ -447,7 +486,7 @@ namespace Tests.Model
 		[Column(IsPrimaryKey=true)] public int ParentID;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID")]
-		public List<Child> Children;
+		public List<Child> Children = null!;
 	}
 
 	public class ParentInheritance12 : ParentInheritanceBase2
@@ -461,7 +500,6 @@ namespace Tests.Model
 	#region Inheritance3
 
 	[Table(Name="Parent")]
-	[InheritanceMapping(Code = null, Type = typeof(ParentInheritanceBase3))]
 	[InheritanceMapping(Code = 1,    Type = typeof(ParentInheritance13))]
 	[InheritanceMapping(Code = 2,    Type = typeof(ParentInheritance13))]
 	public abstract class ParentInheritanceBase3
@@ -470,7 +508,7 @@ namespace Tests.Model
 		public int ParentID;
 
 		[Association(ThisKey = "ParentID", OtherKey = "ParentID")]
-		public List<Child> Children;
+		public List<Child> Children = null!;
 	}
 
 	public class ParentInheritance13 : ParentInheritanceBase3
@@ -526,14 +564,18 @@ namespace Tests.Model
 		[Sql.TableFunction(Name="GetParentByID")]
 		public ITable<Parent> GetParentByID(int? id)
 		{
-			return _ctx.GetTable<Parent>(this, (MethodInfo)(MethodBase.GetCurrentMethod()), id);
+			var methodInfo = typeof(Functions).GetMethod("GetParentByID", new [] {typeof(int?)});
+
+			return _ctx.GetTable<Parent>(this, methodInfo, id);
 		}
 
 		[Sql.TableExpression("{0} {1} WITH (TABLOCK)")]
 		public ITable<T> WithTabLock<T>()
-			where T : class 
+			where T : class
 		{
-			return _ctx.GetTable<T>(this, ((MethodInfo)(MethodBase.GetCurrentMethod())).MakeGenericMethod(typeof(T)));
+			var methodInfo = typeof(Functions).GetMethod("WithTabLock").MakeGenericMethod(typeof(T));
+
+			return _ctx.GetTable<T>(this, methodInfo);
 		}
 
 		[Sql.TableExpression("{0} {1} WITH (TABLOCK)")]
@@ -546,7 +588,7 @@ namespace Tests.Model
 
 		[Sql.TableExpression("{0} {1} WITH (TABLOCK)")]
 		public static ITable<T> WithTabLock1<T>(IDataContext ctx)
-			where T : class 
+			where T : class
 		{
 			return ctx.GetTable<T>(null, _methodInfo.MakeGenericMethod(typeof(T)));
 		}
@@ -564,7 +606,7 @@ namespace Tests.Model
 
 		[Sql.TableExpression("{0} {1} WITH (TABLOCK)")]
 		public static ITable<T> WithTabLock<T>(this IDataContext ctx)
-			where T : class 
+			where T : class
 		{
 			return ctx.GetTable<T>(null, _methodInfo.MakeGenericMethod(typeof(T)));
 		}

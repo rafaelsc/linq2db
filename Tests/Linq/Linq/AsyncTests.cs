@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+
 using LinqToDB;
 using LinqToDB.Data;
 
@@ -9,12 +11,13 @@ using NUnit.Framework;
 namespace Tests.Linq
 {
 	using Model;
+	using UserTests;
 
 	[TestFixture]
 	public class AsyncTests : TestBase
 	{
-		[Test, DataContextSource(false)]
-		public void Test(string context)
+		[Test]
+		public void Test([DataSources(false)] string context)
 		{
 			TestImpl(context);
 		}
@@ -30,8 +33,8 @@ namespace Tests.Linq
 			}
 		}
 
-		[Test, DataContextSource(false)]
-		public void Test1(string context)
+		[Test]
+		public void Test1([DataSources(false)] string context)
 		{
 			using (var db = GetDataContext(context + ".LinqService"))
 			{
@@ -40,8 +43,8 @@ namespace Tests.Linq
 			}
 		}
 
-		[Test, DataContextSource(false)]
-		public void TestForEach(string context)
+		[Test]
+		public void TestForEach([DataSources(false)] string context)
 		{
 			TestForEachImpl(context);
 		}
@@ -58,8 +61,8 @@ namespace Tests.Linq
 			}
 		}
 
-		[Test, DataContextSource(false)]
-		public void TestExecute1(string context)
+		[Test]
+		public void TestExecute1([DataSources(false)] string context)
 		{
 			TestExecute1Impl(context);
 		}
@@ -68,7 +71,11 @@ namespace Tests.Linq
 		{
 			using (var conn = new TestDataConnection(context))
 			{
-				var sql = conn.Person.Where(p => p.ID == 1).Select(p => p.Name).Take(1).ToString().Replace("-- Access", "");
+				conn.InlineParameters = true;
+
+				var sql = conn.Person.Where(p => p.ID == 1).Select(p => p.Name).Take(1).ToString();
+				sql = string.Join(Environment.NewLine, sql.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+					.Where(line => !line.StartsWith("-- Access")));
 
 				var res = await conn.SetCommand(sql).ExecuteAsync<string>();
 
@@ -76,12 +83,16 @@ namespace Tests.Linq
 			}
 		}
 
-		[Test, DataContextSource(false)]
-		public void TestExecute2(string context)
+		[Test]
+		public void TestExecute2([DataSources(false)] string context)
 		{
 			using (var conn = new TestDataConnection(context))
 			{
-				var sql = conn.Person.Where(p => p.ID == 1).Select(p => p.Name).Take(1).ToString().Replace("-- Access", "");
+				conn.InlineParameters = true;
+
+				var sql = conn.Person.Where(p => p.ID == 1).Select(p => p.Name).Take(1).ToString();
+				sql = string.Join(Environment.NewLine, sql.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+					.Where(line => !line.StartsWith("-- Access")));
 
 				var res = conn.SetCommand(sql).ExecuteAsync<string>().Result;
 
@@ -89,8 +100,8 @@ namespace Tests.Linq
 			}
 		}
 
-		[Test, DataContextSource(false)]
-		public void TestQueryToArray(string context)
+		[Test]
+		public void TestQueryToArray([DataSources(false)] string context)
 		{
 			TestQueryToArrayImpl(context);
 		}
@@ -99,7 +110,11 @@ namespace Tests.Linq
 		{
 			using (var conn = new TestDataConnection(context))
 			{
-				var sql = conn.Person.Where(p => p.ID == 1).Select(p => p.Name).Take(1).ToString().Replace("-- Access", "");
+				conn.InlineParameters = true;
+
+				var sql = conn.Person.Where(p => p.ID == 1).Select(p => p.Name).Take(1).ToString();
+				sql = string.Join(Environment.NewLine, sql.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+					.Where(line => !line.StartsWith("-- Access")));
 
 				using (var rd = await conn.SetCommand(sql).ExecuteReaderAsync())
 				{
@@ -107,6 +122,62 @@ namespace Tests.Linq
 
 					Assert.That(list[0], Is.EqualTo("John"));
 				}
+			}
+		}
+
+		[Test]
+		public async Task FirstAsyncTest([DataSources] string context)
+		{
+			using (var db = GetDataContext(context))
+			{
+				var person = await db.Person.FirstAsync(p => p.ID == 1);
+
+				Assert.That(person.ID, Is.EqualTo(1));
+			}
+		}
+
+		[Test]
+		public async Task ContainsAsyncTest([DataSources] string context)
+		{
+			using (var db = GetDataContext(context))
+			{
+				var p = new Person { ID = 1 };
+
+				var r = await db.Person.ContainsAsync(p);
+
+				Assert.That(r, Is.True);
+			}
+		}
+
+		[Test]
+		public async Task TestFirstOrDefault([DataSources] string context)
+		{
+			using (var db = GetDataContext(context))
+			{
+				var param = 4;
+				var resultQuery =
+						from o in db.Parent
+						where Sql.Ext.In(o.ParentID, 1, 2, 3, (int?)null) || o.ParentID == param
+						select o;
+
+				var _ = await resultQuery.FirstOrDefaultAsync();
+			}
+		}
+
+		[ActiveIssue(SkipForNonLinqService = true, Details = "SELECT * query", Configurations = new[]
+		{ 
+			ProviderName.DB2
+		})]
+		[Test]
+		public async Task TakeSkipTest([DataSources] string context)
+		{
+			using (var db = GetDataContext(context))
+			{
+				var resultQuery = db.Parent.OrderBy(p => p.ParentID).Skip(1).Take(2);
+
+				AreEqual(
+					resultQuery.ToArray(),
+					await resultQuery.ToArrayAsync());
 			}
 		}
 	}

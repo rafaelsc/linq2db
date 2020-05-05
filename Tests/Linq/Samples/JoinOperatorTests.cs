@@ -10,10 +10,10 @@ namespace Tests.Samples
 	[TestFixture]
 	public class JoinOperatorTests : TestBase
 	{
-		[Test, NorthwindDataContext]
-		public void InnerJoinOnSingleColumn(string context)
+		[Test]
+		public void InnerJoinOnSingleColumn([NorthwindDataContext] string context)
 		{
-			using (var db = new NorthwindDB())
+			using (var db = new NorthwindDB(context))
 			{
 				var query =
 					from c in db.Category
@@ -22,14 +22,16 @@ namespace Tests.Samples
 					select c;
 
 				foreach (var category in query)
+				{
 					Console.WriteLine(category.CategoryID);
+				}
 			}
 		}
 
-		[Test, NorthwindDataContext]
-		public void InnerJoinOnMultipleColumns(string context)
+		[Test]
+		public void InnerJoinOnMultipleColumns([NorthwindDataContext] string context)
 		{
-			using (var db = new NorthwindDB())
+			using (var db = new NorthwindDB(context))
 			{
 				var query =
 					from p in db.Product
@@ -43,8 +45,8 @@ namespace Tests.Samples
 						o.OrderID,
 					};
 
-				foreach (var item in query)
-					Console.WriteLine(item);
+				var data = query.ToArray();
+				Assert.IsNotEmpty(data);
 			}
 		}
 	}

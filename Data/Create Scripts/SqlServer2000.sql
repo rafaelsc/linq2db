@@ -1,3 +1,25 @@
+﻿DROP TABLE InheritanceParent
+DROP TABLE InheritanceChild
+
+CREATE TABLE InheritanceParent
+(
+	InheritanceParentId int          NOT NULL CONSTRAINT PK_InheritanceParent PRIMARY KEY CLUSTERED,
+	TypeDiscriminator   int              NULL,
+	Name                nvarchar(50)     NULL
+)
+ON [PRIMARY]
+GO
+
+CREATE TABLE InheritanceChild
+(
+	InheritanceChildId  int          NOT NULL CONSTRAINT PK_InheritanceChild PRIMARY KEY CLUSTERED,
+	InheritanceParentId int          NOT NULL,
+	TypeDiscriminator   int              NULL,
+	Name                nvarchar(50)     NULL
+)
+ON [PRIMARY]
+GO
+
 -- Person Table
 
 DROP TABLE Doctor
@@ -19,7 +41,10 @@ INSERT INTO Person (FirstName, LastName, Gender) VALUES ('John',   'Pupkin',    
 GO
 INSERT INTO Person (FirstName, LastName, Gender) VALUES ('Tester', 'Testerson', 'M')
 GO
-
+INSERT INTO Person (FirstName, LastName, Gender) VALUES ('Jane',   'Doe',       'F')
+GO
+INSERT INTO Person (FirstName, LastName, MiddleName, Gender) VALUES ('Jürgen', 'König', 'Ko', 'M')
+GO
 -- Doctor Table Extension
 
 CREATE TABLE Doctor
@@ -71,6 +96,22 @@ SELECT * FROM Person WHERE PersonID = @id
 GO
 
 GRANT EXEC ON Person_SelectByKey TO PUBLIC
+GO
+
+-- Person_SelectByKeyLowercase
+
+DROP Procedure Person_SelectByKeyLowercase
+GO
+
+CREATE Procedure Person_SelectByKeyLowercase
+	@id int
+AS
+
+SELECT personid, firstname FROM Person WHERE PersonID = @id
+
+GO
+
+GRANT EXEC ON Person_SelectByKeyLowercase TO PUBLIC
 GO
 
 -- Person_SelectAll
@@ -332,6 +373,7 @@ CREATE TABLE AllTypes
 	smalldatetimeDataType    smalldatetime    NULL,
 
 	charDataType             char(1)          NULL,
+	char20DataType           char(20)         NULL,
 	varcharDataType          varchar(20)      NULL,
 	textDataType             text             NULL,
 	ncharDataType            nchar(20)        NULL,
@@ -369,7 +411,7 @@ GO
 INSERT INTO AllTypes
 (
 	bigintDataType, numericDataType, bitDataType, smallintDataType, decimalDataType, smallmoneyDataType,
-	intDataType, tinyintDataType, moneyDataType, floatDataType, realDataType, 
+	intDataType, tinyintDataType, moneyDataType, floatDataType, realDataType,
 
 	datetimeDataType, smalldatetimeDataType,
 
@@ -384,22 +426,22 @@ INSERT INTO AllTypes
 	xmlDataType
 )
 SELECT
-	     NULL,      NULL,  NULL,    NULL,    NULL,   NULL,    NULL, NULL,   NULL,  NULL,  NULL,
-	     NULL,      NULL,
-	     NULL,      NULL,  NULL,    NULL,    NULL,   NULL,
-	     NULL,      NULL,  NULL,
-	     NULL,      NULL,
-	     NULL,      NULL,  NULL,
-	     NULL
+		 NULL,      NULL,  NULL,    NULL,    NULL,   NULL,    NULL, NULL,   NULL,  NULL,  NULL,
+		 NULL,      NULL,
+		 NULL,      NULL,  NULL,    NULL,    NULL,   NULL,
+		 NULL,      NULL,  NULL,
+		 NULL,      NULL,
+		 NULL,      NULL,  NULL,
+		 NULL
 UNION ALL
 SELECT
 	 1000000,    9999999,     1,   25555, 2222222, 100000, 7777777,  100, 100000, 20.31, 16.2,
 	Cast('2012-12-12 12:12:12' as datetime),
-	           Cast('2012-12-12 12:12:12' as smalldatetime),
-	      '1',     '234', '567', '23233',  '3323',  '111',
-	        1,         2, Cast(3 as varbinary),
+			   Cast('2012-12-12 12:12:12' as smalldatetime),
+		  '1',     '234', '567', '23233',  '3323',  '111',
+			1,         2, Cast(3 as varbinary),
 	Cast('6F9619FF-8B86-D011-B42D-00C04FC964FF' as uniqueidentifier),
-	                  10,
+					  10,
 	  '22322',    '3333',  2345,
 	'<root><element strattr="strvalue" intattr="12345"/></root>'
 
@@ -435,7 +477,7 @@ GO
 CREATE FUNCTION GetParentByID(@id int)
 RETURNS TABLE
 AS
-RETURN 
+RETURN
 (
 	SELECT * FROM Parent WHERE ParentID = @id
 )
@@ -477,7 +519,8 @@ CREATE TABLE LinqDataTypes
 	BinaryValue    varbinary(5000) NULL,
 	SmallIntValue  smallint,
 	IntValue       int             NULL,
-	BigIntValue    bigint          NULL
+	BigIntValue    bigint          NULL,
+	StringValue    nvarchar(50)    NULL
 )
 GO
 
@@ -566,4 +609,98 @@ SELECT -12345678901234.56789012345678,                           NULL,          
 SELECT  12345678901234.5678901234567,                            NULL,                                  NULL,                 NULL,                                  NULL UNION ALL
 SELECT -12345678901234.5678901234567,                            NULL,                                  NULL,                 NULL,                                  NULL
 
+GO
+
+-- merge test tables
+DROP TABLE TestMerge1
+GO
+
+DROP TABLE TestMerge2
+GO
+
+CREATE TABLE TestMerge1
+(
+	Id        int NOT NULL CONSTRAINT PK_TestMerge1 PRIMARY KEY CLUSTERED,
+	Field1    int NULL,
+	Field2    int NULL,
+	Field3    int NULL,
+	Field4    int NULL,
+	Field5    int NULL,
+
+	FieldInt64      BIGINT            NULL,
+	FieldBoolean    BIT               NULL,
+	FieldString     VARCHAR(20)       NULL,
+	FieldNString    NVARCHAR(20)      NULL,
+	FieldChar       CHAR(1)           NULL,
+	FieldNChar      NCHAR(1)          NULL,
+	FieldFloat      FLOAT(24)         NULL,
+	FieldDouble     FLOAT(53)         NULL,
+	FieldDateTime   DATETIME          NULL,
+	FieldBinary     VARBINARY(20)     NULL,
+	FieldGuid       UNIQUEIDENTIFIER  NULL,
+	FieldDecimal    DECIMAL(24, 10)   NULL,
+	FieldEnumString VARCHAR(20)       NULL,
+	FieldEnumNumber INT               NULL
+)
+GO
+
+CREATE TABLE TestMerge2
+(
+	Id        int NOT NULL CONSTRAINT PK_TestMerge2 PRIMARY KEY CLUSTERED,
+	Field1    int NULL,
+	Field2    int NULL,
+	Field3    int NULL,
+	Field4    int NULL,
+	Field5    int NULL,
+
+	FieldInt64      BIGINT            NULL,
+	FieldBoolean    BIT               NULL,
+	FieldString     VARCHAR(20)       NULL,
+	FieldNString    NVARCHAR(20)      NULL,
+	FieldChar       CHAR(1)           NULL,
+	FieldNChar      NCHAR(1)          NULL,
+	FieldFloat      FLOAT(24)         NULL,
+	FieldDouble     FLOAT(53)         NULL,
+	FieldDateTime   DATETIME          NULL,
+	FieldBinary     VARBINARY(20)     NULL,
+	FieldGuid       UNIQUEIDENTIFIER  NULL,
+	FieldDecimal    DECIMAL(24, 10)   NULL,
+	FieldEnumString VARCHAR(20)       NULL,
+	FieldEnumNumber INT               NULL
+)
+GO
+
+DROP Procedure AddIssue792Record
+GO
+
+CREATE Procedure AddIssue792Record
+AS
+BEGIN
+	INSERT INTO dbo.AllTypes(char20DataType) VALUES('issue792')
+END
+GO
+
+GRANT EXEC ON AddIssue792Record TO PUBLIC
+GO
+DROP TABLE Issue1144
+GO
+CREATE TABLE Issue1144
+(
+	id	INT
+	CONSTRAINT PK_Issue1144 PRIMARY KEY CLUSTERED (id ASC)
+)
+GO
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Column description' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Issue1144', @level2type=N'COLUMN',@level2name=N'id'
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Index description' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Issue1144', @level2type=N'INDEX',@level2name=N'PK_Issue1144'
+
+GO
+
+DROP Procedure Issue1897
+GO
+
+CREATE PROCEDURE Issue1897
+AS
+BEGIN
+	RETURN 4
+END
 GO

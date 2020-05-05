@@ -21,7 +21,7 @@ namespace Tests.Model
 			},
 			new EndpointAddress("net.tcp://localhost:" + ip + "/LinqOverWCF"))
 		{
-			((NetTcpBinding)Binding).ReaderQuotas.MaxStringContentLength = 1000000;
+			((NetTcpBinding)Binding!).ReaderQuotas.MaxStringContentLength = 1000000;
 		}
 
 		public ITable<Person>                 Person                 { get { return this.GetTable<Person>();                 } }
@@ -45,6 +45,8 @@ namespace Tests.Model
 		public ITable<LinqDataTypes>          Types                  { get { return this.GetTable<LinqDataTypes>();          } }
 		public ITable<LinqDataTypes2>         Types2                 { get { return this.GetTable<LinqDataTypes2>();         } }
 		public ITable<TestIdentity>           TestIdentity           { get { return this.GetTable<TestIdentity>();           } }
+		public ITable<InheritanceParentBase>  InheritanceParent      { get { return this.GetTable<InheritanceParentBase>();  } }
+		public ITable<InheritanceChildBase>   InheritanceChild       { get { return this.GetTable<InheritanceChildBase>();   } }
 
 		public ITable<Parent> GetParentByID(int? id)
 		{
