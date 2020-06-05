@@ -467,15 +467,22 @@ namespace Tests.Linq
 		public void LetTest2([DataSources] string context)
 		{
 			using (var db = GetDataContext(context))
+			{
+				var exptected = from p in Parent
+					select new { p } into pp
+					let chs = pp.p.Children
+					select new { pp.p.ParentID, Count = chs.Count() };
+
+				var actual = db.Parent.Select(p => new { Peojection = p })
+					.Select(pp => new { pp, chs = pp.Peojection.Children })
+					.Select(@t => new { @t.pp.Peojection.ParentID, Count = @t.chs.Count() });
+
+				var actualResult = actual.ToArray();
+
 				AreEqual(
-					from p in Parent
-					select new { p } into p
-					let chs = p.p.Children
-					select new { p.p.ParentID, Count = chs.Count() },
-					from p in db.Parent
-					select new { p } into p
-					let chs = p.p.Children
-					select new { p.p.ParentID, Count = chs.Count() });
+					exptected,
+					actual);
+			}
 		}
 
 		[Test]
@@ -595,7 +602,7 @@ namespace Tests.Linq
 		{
 			using (var db = GetDataContext(context))
 			{
-				var value = db.GetTable<Parent170>()
+				var actual = db.GetTable<Parent170>()
 					.SelectMany(x => x.Children)
 #pragma warning disable CS0472 // comparison of int with null
 					.Where(x => x.Parent!.Value1 == null)
@@ -603,7 +610,7 @@ namespace Tests.Linq
 					.Select(x => (int?)x.Parent!.Value1)
 					.First();
 
-				Assert.That(value, Is.Null);
+				Assert.That(actual, Is.Null);
 			}
 		}
 
@@ -713,16 +720,17 @@ namespace Tests.Linq
 		{
 			using (var db = GetDataContext(context))
 			{
-				AreEqual(
-					from t in Parent
+				var exptected = (from t in Parent
 					from g in t.GrandChildren.Where(m => m.ChildID > 22)
 					orderby g.ParentID
-					select t
-					,
-					from t in db.Parent
+					select t).ToArray();
+
+				var actual = (from t in db.Parent
 					from g in t.GrandChildrenX
 					orderby g.ParentID
-					select t);
+					select t).ToArray();
+
+				AreEqual(exptected, actual);
 			}
 		}
 
@@ -875,6 +883,18 @@ namespace Tests.Linq
 				db.Child.SelectMany(_ => AssociationExtension.QueryableParent(_, db)));
 			}
 		}
+
+		[Test]
+		public void DistinctSelect([DataSources] string context)
+		{
+			using (var db = GetDataContext(context))
+				AreEqual(
+					GrandChild.Where(gc => gc.Child!.Parent!.ParentID > 0).Select(gc => gc.Child).Distinct()
+						.Select(c => c.ChildID),
+					db.GrandChild.Where(gc => gc.Child!.Parent!.ParentID > 0).Select(gc => gc.Child).Distinct()
+						.Select(c => c.ChildID));
+		}
+
 
 		[Test]
 		public void AssociationExpressionMethod([DataSources] string context)
@@ -1066,9 +1086,8 @@ namespace Tests.Linq
 			}
 		}
 
-		[ActiveIssue(1711)]
 		[Test]
-		public void Issue1711Test2([DataSources] string context)
+		public void Issue1711Test2([DataSources(TestProvName.AllAccess)] string context)
 		{
 			var ms = new MappingSchema();
 			ms.GetFluentMappingBuilder()
